@@ -1,113 +1,170 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-from typing import Optional
+from typing import Dict, List, Optional
 import time
 
 # Simple import from our app structure
 from app.services.hybrid_humanizer_service import HybridHumanizerService
 
 app = FastAPI(title="AI Humanizer", version="1.0.0")
+templates = Jinja2Templates(directory="templates")
 humanizer = HybridHumanizerService()
 
-class SimpleRequest(BaseModel):
+
+STYLES: List[Dict[str, str]] = [
+    {
+        "id": "casual",
+        "name": "Casual",
+        "description": "Relaxed, friendly voice",
+        "icon": "😊",
+        "best_for": "Social updates & quick messages",
+    },
+    {
+        "id": "professional",
+        "name": "Professional",
+        "description": "Clear and confident business tone",
+        "icon": "💼",
+        "best_for": "Emails, proposals & formal docs",
+    },
+    {
+        "id": "storytelling",
+        "name": "Storytelling",
+        "description": "Engaging narrative flair",
+        "icon": "📚",
+        "best_for": "Blogs, stories & presentations",
+    },
+    {
+        "id": "academic",
+        "name": "Academic",
+        "description": "Scholarly and precise language",
+        "icon": "🎓",
+        "best_for": "Research papers & reports",
+    },
+]
+
+
+EXAMPLES: List[Dict[str, str]] = [
+    {
+        "id": "marketing",
+        "description": "Marketing blurb",
+        "original": "Our proprietary solution leverages a robust suite of capabilities to expedite cross-functional synergy across the organization.",
+        "style": "casual",
+    },
+    {
+        "id": "status_update",
+        "description": "Team status update",
+        "original": "I would like to inform you that we have finalized the integration module and will proceed with deployment upon stakeholder approval.",
+        "style": "professional",
+    },
+    {
+        "id": "education",
+        "description": "Educational paragraph",
+        "original": "Photosynthesis is the process whereby green plants utilize chlorophyll to convert light energy into chemical energy in the form of glucose.",
+        "style": "storytelling",
+    },
+]
+
+
+class HumanizeRequest(BaseModel):
     text: str
     style: str = "casual"
+    enhance_readability: bool = True
+    use_contractions: bool = True
+    vary_sentences: bool = True
 
-class SimpleResponse(BaseModel):
+
+class HumanizeResponse(BaseModel):
     success: bool
+    message: str
     original_text: str
     humanized_text: str
+    style_used: str
     processing_time: float
+    readability_improvement: float
+    word_count: int
+    metrics: Dict[str, float]
+    style_details: Optional[Dict[str, str]]
 
-@app.post("/api/humanize", response_model=SimpleResponse)
-async def humanize_text(request: SimpleRequest):
-    start_time = time.time()
-    
-    try:
-        result = await humanizer.humanize(request.text, request.style)
-        
-        if result["status"] == "completed":
-            return SimpleResponse(
-                success=True,
-                original_text=result["original_text"],
-                humanized_text=result["humanized_text"],
-                processing_time=result["metrics"]["processing_time"]
-            )
-        else:
-            raise HTTPException(500, result.get("error", "Unknown error"))
-            
-    except Exception as e:
-        raise HTTPException(500, f"Humanization failed: {str(e)}")
+
+def _simple_readability_score(text: str) -> float:
+    """Very small heuristic to approximate readability for demo purposes."""
+    if not text:
+        return 0.0
+
+    words = [word for word in text.replace("\n", " ").split(" ") if word]
+    sentences = text.count(".") + text.count("!") + text.count("?")
+    sentences = sentences or 1
+
+    avg_sentence_length = len(words) / sentences
+    avg_word_length = sum(len(word.strip(".,!?;:")) for word in words) / len(words)
+
+    # Produce a bounded score between 0 and 100 where higher is easier to read
+    score = 100 - (avg_sentence_length * 2 + avg_word_length * 5)
+    return max(0.0, min(score, 100.0))
+
 
 @app.get("/", response_class=HTMLResponse)
-async def home():
-    return """
-    <html>
-    <head>
-        <title>AI Humanizer</title>
-        <script src="https://cdn.tailwindcss.com"></script>
-    </head>
-    <body class="bg-gray-100 min-h-screen p-8">
-        <div class="max-w-4xl mx-auto">
-            <h1 class="text-4xl font-bold text-center text-blue-600 mb-8">AI Humanizer</h1>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div class="bg-white p-6 rounded-lg shadow">
-                    <h2 class="text-2xl font-semibold mb-4">Input</h2>
-                    <textarea id="inputText" class="w-full h-40 p-4 border rounded" 
-                              placeholder="Paste AI text here...">The utilization of artificial intelligence represents significant advancement.</textarea>
-                    
-                    <select id="styleSelect" class="w-full p-2 border rounded mt-4">
-                        <option value="casual">Casual</option>
-                        <option value="professional">Professional</option>
-                    </select>
-                    
-                    <button onclick="humanize()" class="w-full bg-blue-500 text-white p-3 rounded mt-4">
-                        Humanize Text
-                    </button>
-                </div>
-                
-                <div class="bg-white p-6 rounded-lg shadow">
-                    <h2 class="text-2xl font-semibold mb-4">Output</h2>
-                    <div id="output" class="w-full h-40 p-4 border rounded bg-gray-50">
-                        Humanized text will appear here...
-                    </div>
-                    <div id="loading" class="hidden text-blue-500 text-center mt-4">
-                        Processing...
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <script>
-            async function humanize() {
-                const input = document.getElementById('inputText').value;
-                const style = document.getElementById('styleSelect').value;
-                const output = document.getElementById('output');
-                const loading = document.getElementById('loading');
-                
-                loading.classList.remove('hidden');
-                
-                try {
-                    const response = await fetch('/api/humanize', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({text: input, style: style})
-                    });
-                    
-                    const result = await response.json();
-                    output.textContent = result.humanized_text;
-                } catch (error) {
-                    output.textContent = 'Error: ' + error.message;
-                } finally {
-                    loading.classList.add('hidden');
-                }
-            }
-        </script>
-    </body>
-    </html>
-    """
+async def home(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.get("/api/v1/styles")
+async def get_styles():
+    return {"styles": STYLES}
+
+
+@app.get("/api/v1/examples")
+async def get_examples():
+    return {"examples": EXAMPLES}
+
+
+@app.post("/api/v1/humanize", response_model=HumanizeResponse)
+async def humanize_text(request: HumanizeRequest):
+    start_time = time.time()
+
+    try:
+        result = await humanizer.humanize(request.text, request.style)
+
+        if result.get("status") != "completed":
+            raise HTTPException(500, result.get("error", "Unknown error"))
+
+        original_text = result["original_text"]
+        humanized_text = result["humanized_text"]
+
+        original_readability = _simple_readability_score(original_text)
+        humanized_readability = _simple_readability_score(humanized_text)
+        readability_improvement = humanized_readability - original_readability
+
+        processing_time = result.get("metrics", {}).get("processing_time", time.time() - start_time)
+        word_count = len([word for word in humanized_text.replace("\n", " ").split(" ") if word])
+
+        style_details = next((style for style in STYLES if style["id"] == request.style), None)
+
+        return HumanizeResponse(
+            success=True,
+            message="Text humanized successfully.",
+            original_text=original_text,
+            humanized_text=humanized_text,
+            style_used=request.style,
+            processing_time=processing_time,
+            readability_improvement=readability_improvement,
+            word_count=word_count,
+            metrics={
+                "processing_time": processing_time,
+                "readability_before": original_readability,
+                "readability_after": humanized_readability,
+                "enhance_readability": float(request.enhance_readability),
+                "use_contractions": float(request.use_contractions),
+                "vary_sentences": float(request.vary_sentences),
+            },
+            style_details=style_details,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Humanization failed: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
