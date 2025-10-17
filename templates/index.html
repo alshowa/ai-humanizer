@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Humanizer - Make AI Text Sound Human</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .text-area {
+            min-height: 150px;
+            resize: vertical;
+        }
+        .result-area {
+            min-height: 150px;
+            background: #f8fafc;
+        }
+        .style-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .style-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .style-card.selected {
+            border-color: #667eea;
+            background-color: #f0f4ff;
+        }
+        .loading {
+            display: none;
+        }
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="gradient-bg text-white">
+        <div class="container mx-auto px-4 py-8">
+            <div class="text-center">
+                <h1 class="text-4xl font-bold mb-4">
+                    <i class="fas fa-robot mr-3"></i>AI Humanizer
+                </h1>
+                <p class="text-xl opacity-90">Transform AI-generated text into natural, human-like writing</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Input Section -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-2xl font-semibold mb-4">Your Text</h2>
+                    
+                    <textarea 
+                        id="inputText" 
+                        placeholder="Paste your AI-generated text here... Or try an example below!"
+                        class="w-full text-area border border-gray-300 rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    ></textarea>
+                    
+                    <div class="mt-4">
+                        <h3 class="font-semibold mb-2">Quick Examples</h3>
+                        <div id="examples" class="space-y-2">
+                            <!-- Examples will be loaded here -->
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <h3 class="font-semibold mb-3">Writing Style</h3>
+                        <div id="styleSelector" class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            <!-- Style cards will be loaded here -->
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <h3 class="font-semibold mb-3">Enhancement Options</h3>
+                        <div class="space-y-2">
+                            <label class="flex items-center">
+                                <input type="checkbox" id="enhanceReadability" checked class="mr-2">
+                                <span>Improve readability</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="useContractions" checked class="mr-2">
+                                <span>Use natural contractions (don't, can't)</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="varySentences" checked class="mr-2">
+                                <span>Vary sentence rhythm</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button 
+                        id="humanizeBtn"
+                        onclick="humanizeText()"
+                        class="w-full gradient-bg text-white py-3 px-6 rounded-lg font-semibold mt-6 hover:opacity-90 transition-opacity"
+                    >
+                        <i class="fas fa-magic mr-2"></i>Humanize Text
+                    </button>
+
+                    <div id="loading" class="loading mt-4 text-center">
+                        <div class="pulse text-blue-600">
+                            <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                            <p>Humanizing your text...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Output Section -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-lg shadow-lg p-6 sticky top-4">
+                    <h2 class="text-2xl font-semibold mb-4">Humanized Result</h2>
+                    
+                    <div id="outputContainer" class="hidden">
+                        <div id="resultArea" class="result-area border border-gray-300 rounded-lg p-4 mb-4 whitespace-pre-wrap"></div>
+                        
+                        <div id="metrics" class="bg-gray-50 rounded-lg p-4 mb-4">
+                            <h4 class="font-semibold mb-2">Improvements</h4>
+                            <!-- Metrics will be shown here -->
+                        </div>
+                        
+                        <div class="flex space-x-2">
+                            <button 
+                                onclick="copyToClipboard()"
+                                class="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
+                            >
+                                <i class="fas fa-copy mr-2"></i>Copy
+                            </button>
+                            <button 
+                                onclick="downloadText()"
+                                class="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
+                            >
+                                <i class="fas fa-download mr-2"></i>Download
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="emptyState" class="text-center text-gray-500 py-8">
+                        <i class="fas fa-arrow-left text-3xl mb-4"></i>
+                        <p>Your humanized text will appear here</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let currentStyle = 'casual';
+        let currentResult = null;
+
+        // Load styles and examples when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStyles();
+            loadExamples();
+        });
+
+        async function loadStyles() {
+            try {
+                const response = await fetch('/api/v1/styles');
+                const data = await response.json();
+                
+                const container = document.getElementById('styleSelector');
+                container.innerHTML = data.styles.map(style => `
+                    <div class="style-card border-2 rounded-lg p-3 text-center ${style.id === 'casual' ? 'selected' : ''}" 
+                         onclick="selectStyle('${style.id}')">
+                        <div class="text-2xl mb-1">${style.icon}</div>
+                        <div class="font-semibold">${style.name}</div>
+                        <div class="text-xs text-gray-600 mt-1">${style.best_for}</div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading styles:', error);
+            }
+        }
+
+        async function loadExamples() {
+            try {
+                const response = await fetch('/api/v1/examples');
+                const data = await response.json();
+                
+                const container = document.getElementById('examples');
+                container.innerHTML = data.examples.map(example => `
+                    <div class="text-sm p-2 bg-gray-100 rounded cursor-pointer hover:bg-gray-200" 
+                         onclick="loadExample('${example.original.replace(/'/g, "\\'")}', '${example.style}')">
+                        <div class="font-semibold">${example.description}</div>
+                        <div class="text-gray-600 truncate">"${example.original}"</div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading examples:', error);
+            }
+        }
+
+        function selectStyle(styleId) {
+            currentStyle = styleId;
+            
+            // Update UI
+            document.querySelectorAll('.style-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+        }
+
+        function loadExample(text, style) {
+            document.getElementById('inputText').value = text;
+            selectStyle(style);
+        }
+
+        async function humanizeText() {
+            const inputText = document.getElementById('inputText').value.trim();
+            if (!inputText) {
+                alert('Please enter some text to humanize');
+                return;
+            }
+
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('humanizeBtn').disabled = true;
+
+            try {
+                const response = await fetch('/api/v1/humanize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: inputText,
+                        style: currentStyle,
+                        enhance_readability: document.getElementById('enhanceReadability').checked,
+                        use_contractions: document.getElementById('useContractions').checked,
+                        vary_sentences: document.getElementById('varySentences').checked
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showResult(result);
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                alert('Error humanizing text: ' + error.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('humanizeBtn').disabled = false;
+            }
+        }
+
+        function showResult(result) {
+            currentResult = result;
+            
+            // Show output container, hide empty state
+            document.getElementById('outputContainer').classList.remove('hidden');
+            document.getElementById('emptyState').style.display = 'none';
+            
+            // Set humanized text
+            document.getElementById('resultArea').textContent = result.humanized_text;
+            
+            // Show metrics
+            const metricsHtml = `
+                <div class="grid grid-cols-2 gap-2 text-sm">
+                    <div>Processing time:</div>
+                    <div class="font-semibold">${result.processing_time.toFixed(2)}s</div>
+                    
+                    <div>Readability improvement:</div>
+                    <div class="font-semibold ${result.readability_improvement > 0 ? 'text-green-600' : 'text-red-600'}">
+                        ${result.readability_improvement > 0 ? '+' : ''}${result.readability_improvement.toFixed(1)}%
+                    </div>
+                    
+                    <div>Word count:</div>
+                    <div class="font-semibold">${result.word_count}</div>
+                    
+                    <div>Style:</div>
+                    <div class="font-semibold capitalize">${result.style_used}</div>
+                </div>
+            `;
+            document.getElementById('metrics').innerHTML = metricsHtml;
+        }
+
+        function copyToClipboard() {
+            if (!currentResult) return;
+            
+            navigator.clipboard.writeText(currentResult.humanized_text).then(() => {
+                // Show temporary success message
+                const btn = event.target;
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check mr-2"></i>Copied!';
+                btn.classList.remove('bg-gray-200');
+                btn.classList.add('bg-green-500', 'text-white');
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.classList.remove('bg-green-500', 'text-white');
+                    btn.classList.add('bg-gray-200');
+                }, 2000);
+            });
+        }
+
+        function downloadText() {
+            if (!currentResult) return;
+            
+            const blob = new Blob([currentResult.humanized_text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `humanized-text-${new Date().getTime()}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Keyboard shortcut: Ctrl+Enter to humanize
+        document.getElementById('inputText').addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                humanizeText();
+            }
+        });
+    </script>
+</body>
+</html>
