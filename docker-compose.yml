@@ -1,0 +1,22 @@
+services:
+  ai-humanizer:
+    image: python:3.11-windowsservercore
+    container_name: ai-humanizer
+    working_dir: C:\\app
+    ports:
+      - "8000:8000"
+    volumes:
+      - .\\app:C:\\app
+    command: powershell -Command "
+      pip install fastapi uvicorn spacy nltk textblob gensim transformers torch redis;
+      python -m spacy download en_core_web_sm;
+      python -c \"import nltk; nltk.download('punkt'); nltk.download('wordnet')\";
+      uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+    environment:
+      - USE_GPU=false
+
+  redis:
+    image: redis:windowsservercore
+    container_name: ai-humanizer-redis
+    ports:
+      - "6379:6379"

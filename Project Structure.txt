@@ -1,0 +1,21 @@
+ai-humanizer/
+├── app/
+│   ├── __init__.py
+│   ├── main.py
+│   ├── models.py
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── hybrid_humanizer.py
+│   │   ├── hybrid_humanizer_service.py
+│   │   ├── cache.py
+│   │   └── rate_limiter.py
+│   ├── static/
+│   │   └── style.css
+│   └── templates/
+│       └── index.html
+├── requirements.txt
+├── Dockerfile
+├── docker-compose.yml
+├── start.sh
+├── config.py
+└── README.md
